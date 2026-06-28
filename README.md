@@ -8,9 +8,43 @@ Read [SPEC.md](./SPEC.md) before implementing. It is the source of truth for pro
 
 - Production URL: `https://halo.gratis.sh`
 - Runtime: Cloudflare Worker with static assets
-- Database: Cloudflare D1
+- Database: Cloudflare D1 database `halo`
 - Deployment: GitHub Actions using Wrangler
 - Contact/entity for legal pages: `mentor@palokaj.co`, `MMOH`
+
+## Current App Surface
+
+- Invite-gated Oura OAuth authorization-code login.
+- Server-side Oura token storage, refresh, identity lookup, and sleep sync.
+- Dashboard for latest average HRV, max sleeping HRV, today's PVT, and 7/30/90/365 baselines.
+- 3-minute PVT-B style test with raw trials, invalidation, and deterministic v1 scoring.
+- PWA install/offline/update controls.
+- Short `/privacy` and `/tos` pages.
+
+## Local Development
+
+Use Node.js 24.
+
+```bash
+npm install
+npm run db:migrate
+npm run dev
+```
+
+Local app URL:
+
+```text
+http://localhost:8787
+```
+
+Run checks:
+
+```bash
+npm run lint
+npm test
+npm run build
+npm run test:e2e
+```
 
 ## Required API Keys And Secrets
 
@@ -95,8 +129,8 @@ Use `wrangler secret put` for production runtime secrets. Do not commit `.env`.
 The production deploy job must run migrations before deploying the Worker:
 
 ```bash
-npx wrangler d1 migrations apply halo --remote
-npx wrangler deploy
+npm run db:migrate:remote
+npm run deploy
 ```
 
 Use the actual D1 database name if it differs from `halo`.

@@ -1,0 +1,53 @@
+{
+  "name": "halo",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Invite-only Oura HRV and PVT trend dashboard hosted on Cloudflare Workers.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 8787",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 8787",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply halo --local",
+    "db:migrate:remote": "wrangler d1 migrations apply halo --remote",
+    "lint": "eslint --fix .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "lucide-react": "^1.21.0",
+    "mentie": "^0.5.4",
+    "promise-parallel-throttle": "^3.5.0",
+    "promise-retry": "^2.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-hot-toast": "^2.6.0",
+    "react-router": "^8.0.1",
+    "serialize-query-params": "^2.0.4",
+    "styled-components": "^6.4.3",
+    "use-query-params": "^2.2.2",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^8.0.1",
+    "@babel/preset-react": "^8.0.1",
+    "@cloudflare/vite-plugin": "^1.42.3",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.9",
+    "airier": "^0.1.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "vite": "^8.1.0",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.9",
+    "wrangler": "^4.105.0"
+  }
+}

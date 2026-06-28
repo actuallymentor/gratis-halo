@@ -1,0 +1,39 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    "name": "halo",
+    "main": "src/worker/index.js",
+    "compatibility_date": "2026-06-28",
+    "workers_dev": true,
+    "routes": [
+        {
+            "pattern": "halo.gratis.sh/*",
+            "zone_name": "gratis.sh"
+        }
+    ],
+    "assets": {
+        "directory": "./dist",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": [ "/api/*", "/auth/oura/*", "/logout" ]
+    },
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "halo",
+            "database_id": "ecdceaff-cd7c-4eaf-8116-2348aa15c9ff",
+            "migrations_dir": "migrations"
+        }
+    ],
+    "secrets_store_secrets": [],
+    "secrets": {
+        "required": [
+            "OURA_CLIENT_ID",
+            "OURA_CLIENT_SECRET",
+            "INVITE_CODE",
+            "SESSION_SECRET"
+        ]
+    },
+    "observability": {
+        "enabled": true
+    }
+}

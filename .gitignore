@@ -141,3 +141,14 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Cloudflare / test output
+.wrangler/
+.dev.vars
+.dev.vars.*
+worker-configuration.d.ts
+playwright-report/
+test-results/
+
+# Local browser profile used while developing OAuth
+.browser-profile/
