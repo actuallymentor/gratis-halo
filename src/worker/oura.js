@@ -1,3 +1,4 @@
+import { log } from 'mentie/modules/logging.js'
 import { add_calendar_days, now_iso, to_yyyy_mm_dd } from '../modules/dates.js'
 import { choose_long_sleep_records, compute_max_sleep_hrv, duration_to_seconds } from '../modules/hrv.js'
 import { COOKIE_NAMES, clear_cookie, create_signed_cookie, read_signed_cookie } from './cookies.js'
@@ -78,6 +79,28 @@ export async function read_pre_auth_cookie( request, env ) {
 }
 
 /**
+ * Creates an Oura OAuth state cookie and authorize URL.
+ * @param {Object} options - OAuth start options.
+ * @returns {Promise<Object>} OAuth start data.
+ */
+export async function create_oura_oauth_start( { env, request } ) {
+
+    const state = crypto.randomUUID()
+    const state_cookie = await create_signed_cookie( request, COOKIE_NAMES.oauth_state, {
+        state,
+        expires_at: new Date( Date.now() +  OAUTH_STATE_MAX_AGE_SECONDS * 1000  ).toISOString(),
+    }, {
+        secret: env.SESSION_SECRET,
+        max_age: OAUTH_STATE_MAX_AGE_SECONDS,
+    } )
+
+    return {
+        start_url: build_oura_authorize_url( { env, request, state } ),
+        state_cookie,
+    }
+}
+
+/**
  * Returns a privacy-minimized IP key for invite rate limiting.
  * @param {Request} request - Incoming request.
  * @param {Object} env - Worker environment.
@@ -134,16 +157,9 @@ export async function start_oura_auth( request, env ) {
 
     if( !pre_auth ) return redirect_response( `/login?error=invite_required` )
 
-    const state = crypto.randomUUID()
-    const state_cookie = await create_signed_cookie( request, COOKIE_NAMES.oauth_state, {
-        state,
-        expires_at: new Date( Date.now() +  OAUTH_STATE_MAX_AGE_SECONDS * 1000  ).toISOString(),
-    }, {
-        secret: env.SESSION_SECRET,
-        max_age: OAUTH_STATE_MAX_AGE_SECONDS,
-    } )
+    const { start_url, state_cookie } = await create_oura_oauth_start( { env, request } )
 
-    return with_cookies( redirect_response( build_oura_authorize_url( { env, request, state } ) ), [ state_cookie ] )
+    return with_cookies( redirect_response( start_url ), [ state_cookie ] )
 }
 
 /**
@@ -311,19 +327,25 @@ export async function handle_oura_callback( request, env ) {
         return redirect_response( `/login?error=invalid_oauth_state` )
     }
 
-    const tokens = await exchange_oura_code( { env, request, code } )
-    const identity = await fetch_oura_identity( tokens.access_token )
-    const user = await upsert_user_from_oura( { env, identity } )
+    try {
+        const tokens = await exchange_oura_code( { env, request, code } )
+        const identity = await fetch_oura_identity( tokens.access_token )
+        const user = await upsert_user_from_oura( { env, identity } )
 
-    await upsert_oura_connection( { env, user_id: user.id, tokens } )
+        await upsert_oura_connection( { env, user_id: user.id, tokens } )
 
-    const session_cookie = await create_session_cookie( request, { env, user_id: user.id } )
+        const session_cookie = await create_session_cookie( request, { env, user_id: user.id } )
 
-    return with_cookies( redirect_response( `/` ), [
-        session_cookie,
-        clear_cookie( request, COOKIE_NAMES.pre_auth ),
-        clear_cookie( request, COOKIE_NAMES.oauth_state ),
-    ] )
+        return with_cookies( redirect_response( `/` ), [
+            session_cookie,
+            clear_cookie( request, COOKIE_NAMES.pre_auth ),
+            clear_cookie( request, COOKIE_NAMES.oauth_state ),
+        ] )
+    } catch ( error ) {
+        log.warn( `Oura OAuth callback failed`, error.message )
+
+        return redirect_response( `/login?error=oura_login_failed` )
+    }
 }
 
 /**
@@ -530,4 +552,3 @@ export async function sync_oura_sleep( { env, user_id } ) {
         }
     }
 }
-

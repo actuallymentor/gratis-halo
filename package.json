@@ -1,6 +1,6 @@
 {
   "name": "halo",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "Invite-only Oura HRV and PVT trend dashboard hosted on Cloudflare Workers.",
@@ -13,7 +13,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply halo --remote",
     "lint": "eslint --fix .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run db:migrate && playwright test",
     "prepare": "husky"
   },
   "dependencies": {

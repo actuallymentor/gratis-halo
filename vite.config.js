@@ -35,7 +35,14 @@ export default defineConfig( {
                 ],
             },
             workbox: {
+                skipWaiting: true,
+                clientsClaim: true,
                 navigateFallback: `/index.html`,
+                navigateFallbackDenylist: [
+                    /^\/api\//,
+                    /^\/auth\//,
+                    /^\/logout$/,
+                ],
                 globPatterns: [ `**/*.{js,css,html,svg,png,ico,json}` ],
                 runtimeCaching: [
                     {

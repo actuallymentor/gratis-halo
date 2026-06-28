@@ -5,10 +5,12 @@ import { timing_safe_equal } from './crypto.js'
 import { clear_cookie, COOKIE_NAMES } from './cookies.js'
 import { error_response, ok_response, read_json, redirect_response, require_method, with_cookies } from './http.js'
 import {
+    create_oura_oauth_start,
     create_pre_auth_cookie,
     get_invite_ip_hash,
     handle_oura_callback,
     is_invite_limited,
+    read_pre_auth_cookie,
     record_invite_attempt,
     start_oura_auth,
     sync_oura_sleep,
@@ -70,11 +72,35 @@ export async function handle_invite_verify( request, env ) {
     if( !success ) return error_response( `invalid_invite`, `That invite code is not valid.`, { status: 403 } )
 
     const pre_auth_cookie = await create_pre_auth_cookie( request, env )
+    const { start_url, state_cookie } = await create_oura_oauth_start( { env, request } )
 
     return with_cookies( ok_response( {
         can_start_oauth: true,
-        start_url: `/auth/oura/start`,
-    } ), [ pre_auth_cookie ] )
+        start_url,
+    } ), [ pre_auth_cookie, state_cookie ] )
+}
+
+/**
+ * Starts Oura OAuth from a JSON API request.
+ * @param {Request} request - Incoming request.
+ * @param {Object} env - Worker environment.
+ * @returns {Promise<Response>} API response.
+ */
+export async function handle_oura_start_api( request, env ) {
+
+    require_method( request, `POST` )
+
+    const pre_auth = await read_pre_auth_cookie( request, env )
+
+    if( !pre_auth ) {
+        return error_response( `invite_required`, `Enter the invite code again before connecting Oura.`, { status: 401 } )
+    }
+
+    const { start_url, state_cookie } = await create_oura_oauth_start( { env, request } )
+
+    return with_cookies( ok_response( {
+        start_url,
+    } ), [ state_cookie ] )
 }
 
 /**
@@ -101,6 +127,7 @@ export async function handle_api_request( request, env ) {
         }
 
         if( path === `/api/invite/verify` ) return handle_invite_verify( request, env )
+        if( path === `/api/oura/start` ) return handle_oura_start_api( request, env )
 
         if( path === `/api/logout` ) {
             require_method( request, `POST` )

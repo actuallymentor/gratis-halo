@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2] - 2026-06-28
+
+### Fixed
+- prevent installed service workers from intercepting Oura OAuth start and callback
+- return an external Oura authorize URL directly after invite verification
+
+## [0.2.1] - 2026-06-28
+
+### Fixed
+- show wrong invite codes and Oura callback failures as visible login errors with toast feedback
+- run local D1 migrations before browser tests so invite verification uses the expected schema
+
 ## [0.2.0] - 2026-06-28
 
 ### Added
