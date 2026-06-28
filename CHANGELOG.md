@@ -5,3 +5,4 @@
 ### Added
 - add Halo implementation spec and deployment README (9c4d3c6)
 - clarify Worker routing, D1 migrations, identity, baselines, and PVT score
+- define SPA fallback, identity uniqueness, and PVT aggregate metrics

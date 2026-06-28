@@ -21,8 +21,9 @@ Use "Oura" for the ring/service and "Halo" for this app.
 - Use a local `.env` for local development values.
 - Deploy on push through GitHub Actions with Wrangler.
 - Allow the implementation agent to create Cloudflare resources: Worker, D1 database, routes, secrets, and required bindings.
-- Configure Worker static assets so the Worker runs before assets for `/api/*`, `/auth/oura/*`, and `/logout`.
-  In `wrangler.jsonc`, express this with `assets.run_worker_first`; otherwise an OAuth callback navigation can be swallowed by SPA asset routing.
+- Configure Worker static assets for SPA fallback and route precedence.
+  Use `assets.not_found_handling = "single-page-application"` so direct loads of routes like `/login`, `/test`, `/privacy`, and `/tos` return the SPA shell.
+  Use `assets.run_worker_first` for `/api/*`, `/auth/oura/*`, and `/logout`; otherwise an OAuth callback navigation can be swallowed by SPA asset routing.
 
 Example Worker asset routing:
 
@@ -31,6 +32,7 @@ Example Worker asset routing:
     "assets": {
         "directory": "./dist",
         "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
         "run_worker_first": [ "/api/*", "/auth/oura/*", "/logout" ]
     }
 }
@@ -342,6 +344,15 @@ Dashboard metrics:
 - False start count.
 - Response speed as mean `1 / RT_seconds`.
 
+Compute PVT aggregate metrics from valid responses only:
+
+- Valid responses exclude false starts and no-response lapses.
+- `mean_rt_ms` is the arithmetic mean of valid reaction times.
+- `median_rt_ms` is the median of valid reaction times; for an even count, use the average of the two middle values.
+- `rt_stddev_ms` is the population standard deviation of valid reaction times; use `0` when there is exactly one valid response.
+- `mean_response_speed` is the arithmetic mean of `1 / RT_seconds` across valid responses.
+- If there are no valid responses, set `score = 0`, leave RT aggregates null, and preserve lapse/false-start counts.
+
 Use this exact v1 simple score:
 
 ```text
@@ -387,6 +398,8 @@ Use migrations. Names below are conceptual; adapt only if implementation constra
 - `created_at`
 - `updated_at`
 - `last_login_at`
+- unique index on `oura_user_id` where `oura_user_id is not null`
+- unique index on normalized lower-case `email` where `email is not null`
 
 ### `oura_connections`
 
@@ -569,6 +582,7 @@ For PVT timing tests, use browser-level event simulation where possible. Unit-te
 - Oura V2 OpenAPI schema: https://cloud.ouraring.com/v2/static/json/openapi-1.35.json
 - Oura error/rate-limit docs: https://cloud.ouraring.com/docs/error-handling
 - Cloudflare React + Vite Workers guide: https://developers.cloudflare.com/workers/framework-guides/web-apps/react/
+- Cloudflare Worker SPA routing: https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/
 - Cloudflare Worker static asset routing: https://developers.cloudflare.com/workers/static-assets/routing/worker-script/
 - Cloudflare GitHub Actions deployment: https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/
 - Cloudflare D1 migrations: https://developers.cloudflare.com/d1/reference/migrations/

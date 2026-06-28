@@ -88,7 +88,7 @@ Use `wrangler secret put` for production runtime secrets. Do not commit `.env`.
 11. Implement 3-minute PVT-B with strict invalidation rules.
 12. Implement dashboard, history states, `/privacy`, and `/tos`.
 13. Add E2E coverage for the invite gate, OAuth state, dashboard calculations, PVT scoring/invalidation, and legal routes.
-14. Configure `wrangler.jsonc` so `assets.run_worker_first` includes `/api/*`, `/auth/oura/*`, and `/logout`.
+14. Configure `wrangler.jsonc` so `assets.not_found_handling` is `single-page-application` and `assets.run_worker_first` includes `/api/*`, `/auth/oura/*`, and `/logout`.
 15. Configure GitHub Actions to apply remote D1 migrations before deploy.
 16. Configure GitHub Actions to deploy with Wrangler on push.
 
