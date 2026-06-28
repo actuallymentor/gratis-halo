@@ -21,6 +21,20 @@ Use "Oura" for the ring/service and "Halo" for this app.
 - Use a local `.env` for local development values.
 - Deploy on push through GitHub Actions with Wrangler.
 - Allow the implementation agent to create Cloudflare resources: Worker, D1 database, routes, secrets, and required bindings.
+- Configure Worker static assets so the Worker runs before assets for `/api/*`, `/auth/oura/*`, and `/logout`.
+  In `wrangler.jsonc`, express this with `assets.run_worker_first`; otherwise an OAuth callback navigation can be swallowed by SPA asset routing.
+
+Example Worker asset routing:
+
+```jsonc
+{
+    "assets": {
+        "directory": "./dist",
+        "binding": "ASSETS",
+        "run_worker_first": [ "/api/*", "/auth/oura/*", "/logout" ]
+    }
+}
+```
 
 ## Stack
 
@@ -106,9 +120,21 @@ OAuth request:
 - `scope=daily email`
 - `state` must be random, bound to the pre-auth session, and verified on callback
 
-Minimal scope is `daily email`. `daily` is needed for sleep HRV, and `email` is needed because Oura is the account system in v1 and Halo needs a stable identity when a user returns without an existing session. Do not request `personal`, `heartrate`, `workout`, `tag`, `session`, or `spo2` in v1 unless the implementation proves `daily email` is insufficient.
+Minimal scope is `daily email`. `daily` is needed for sleep HRV. `email` is needed because Oura is the account system in v1, and Halo needs a stable identity when a user returns without an existing session.
+
+Do not request `personal`, `heartrate`, `workout`, `tag`, `session`, or `spo2` in v1 unless the implementation proves `daily email` is insufficient.
 
 After OAuth succeeds, create a Halo session. Oura login is the only account system in v1.
+
+After exchanging the authorization code for tokens, immediately fetch identity:
+
+```text
+GET https://api.ouraring.com/v2/usercollection/personal_info
+```
+
+Use the returned Oura `id` as the primary stable external identity. Store email if returned through the `email` scope.
+
+Upsert the local user by Oura `id`. If Oura does not return an `id`, fall back to normalized email. If neither an `id` nor email is returned, fail the login with a clear re-authentication error because Halo cannot safely link future sessions.
 
 ### Token Storage
 
@@ -204,6 +230,10 @@ For HRV and PVT, compare current value against rolling calendar-day windows:
 - 365 days.
 
 Calendar windows mean dates on the calendar, not the last N available measurements. Missing days are ignored in calculations but reflected in sample count.
+
+Exclude the current measurement day from the baseline.
+
+For example, a June 28 HRV value compares against June 21-27 for the 7-day baseline, not June 22-28. This prevents the current value from diluting its own z-score.
 
 For each comparison:
 
@@ -312,7 +342,20 @@ Dashboard metrics:
 - False start count.
 - Response speed as mean `1 / RT_seconds`.
 
-For the simple score, use a transparent formula derived from the stored metrics. Prefer monotonic penalties for slower median RT, lapses, false starts, and variability. Keep the formula isolated and documented so it can be revised later without changing raw data.
+Use this exact v1 simple score:
+
+```text
+if valid_response_count = 0:
+    score = 0
+else:
+    median_penalty = max(0, median_rt_ms - 250) / 10
+    lapse_penalty = lapses_355_ms * 5
+    false_start_penalty = false_starts * 3
+    variability_penalty = min(20, rt_stddev_ms / 20)
+    score = round(clamp(100 - median_penalty - lapse_penalty - false_start_penalty - variability_penalty, 0, 100))
+```
+
+Keep the formula in an isolated scoring module with constants for the 250 ms baseline, penalty weights, and caps. The formula is provisional and exists to make v1 deterministic; raw trials remain the source of truth for future scoring changes.
 
 ### Device Handling
 
@@ -526,7 +569,10 @@ For PVT timing tests, use browser-level event simulation where possible. Unit-te
 - Oura V2 OpenAPI schema: https://cloud.ouraring.com/v2/static/json/openapi-1.35.json
 - Oura error/rate-limit docs: https://cloud.ouraring.com/docs/error-handling
 - Cloudflare React + Vite Workers guide: https://developers.cloudflare.com/workers/framework-guides/web-apps/react/
+- Cloudflare Worker static asset routing: https://developers.cloudflare.com/workers/static-assets/routing/worker-script/
 - Cloudflare GitHub Actions deployment: https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/
+- Cloudflare D1 migrations: https://developers.cloudflare.com/d1/reference/migrations/
+- Cloudflare D1 Wrangler commands: https://developers.cloudflare.com/d1/wrangler-commands/
 - Cloudflare API token permissions: https://developers.cloudflare.com/fundamentals/api/reference/permissions/
 - PVT-B validation: https://www.med.upenn.edu/uep/assets/user-content/documents/Basner2011-ValidityandsensitivityofabriefPVT.pdf
 - PVT-3 vs PVT-10 caution: https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.815697/full
